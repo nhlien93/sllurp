@@ -201,6 +201,10 @@ class LLRPClient (Protocol):
                     if status == 'Success':
                         cn2t = Capability_Name2Type
                         reqd = cn2t['All']
+                        #reqd = cn2t['General Device Capabilities']
+                        #reqd = cn2t['LLRP Capabilities']
+                        #reqd = cn2t['Air Protocol LLRP Capabilities']
+                        #reqd = cn2t['Regulatory Capabilities']
                         self.sendLLRPMessage(LLRPMessage(msgdict={
                             'GET_READER_CAPABILITIES': {
                                 'Ver':  1,
@@ -233,7 +237,7 @@ class LLRPClient (Protocol):
                 if self.start_inventory:
                     self.startInventory()
             else:
-                logger.error('unexpected response {} ' \
+                logger.error('unexpected response {}' \
                         ' when getting capabilities'.format(msgName))
                 bail = True
                 run_callbacks = False

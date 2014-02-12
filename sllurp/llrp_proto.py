@@ -320,6 +320,11 @@ def decode_GetReaderCapabilitiesResponse(data):
     if ret:
         msg['RegulatoryCapabilities'] = ret
 
+    ret, body = decode('AirProtocolLLRPCapabilities')(body)
+    if ret:
+        msg['AirProtocolLLRPCapabilities'] = ret
+
+
     # Check the end of the message
     if len(body) > 0:
         raise LLRPError('junk at end of message: ' + bin2dump(body))
@@ -720,17 +725,52 @@ Message_struct['UTCTimestamp'] = {
     ],
     'decode' : decode_UTCTimestamp
 }
-"""
-Message_struct['LLRPdCapabilities'] = {
-    # no 'type': dummy message struct!
-    'type': -1,
+
+def decode_AirProtocolLLRPCapabilities(data):
+    logger.debug(func())
+    par = {}
+
+    if len(data) == 0:
+        return None, data
+
+    header = data[0 : par_header_len]
+    msgtype, length = struct.unpack(par_header, header)
+    msgtype = msgtype & BITMASK(10)
+    logger.debug('the message type is {}'.format(msgtype))
+    if msgtype != Message_struct['AirProtocolLLRPCapabilities']['type']:
+        return (None, data)
+    body = data[par_header_len : length]
+    logger.debug('%s (type=%d len=%d)' % (func(), msgtype, length))
+
+    # Decode fields
+    (flags,
+     par['MaxNumSelectFiltersPerQuery']) = struct.unpack('!BH', body)
+
+    par['CanSupportBlockErase'] = (flags & BIT(7) == BIT(7))
+    par['CanSupportBlockWrite'] = (flags & BIT(6) == BIT(6))
+    par['CanSupportBlockPermalock'] = (flags & BIT(5) == BIT(5))
+    par['CanSupportTagRecommissioning'] = (flags & BIT(4) == BIT(4))
+    par['CanSupportUMIMethod2'] = (flags & BIT(3) == BIT(3))
+    par['CanSupportXPC'] = (flags & BIT(2) == BIT(2))
+
+    return par, data[length : ]
+
+Message_struct['AirProtocolLLRPCapabilities'] = {
+    'type': 327,
     'fields': [
-        'GeneralDeviceCapabilities',
-        'LLRPCapabilities',
-        'AirProtocolLLRPCapabilities'
-    ]
+        'Type',
+        'CanSupportBlockErase',
+        'CanSupportBlockWrite',
+        'CanSupportBlockPermalock',
+        'CanSupportTagRecommissioning',
+        'CanSupportUMIMethod2',
+        'CanSupportXPC',
+	'MaxNumSelectFiltersPerQuery'
+    ],
+    'decode': decode_AirProtocolLLRPCapabilities
 }
-"""
+
+
 def decode_RegulatoryCapabilities(data):
     logger.debug(func())
     par = {}
@@ -972,10 +1012,10 @@ def decode_RFSurveyFrequencyCapabilities(data):
     header = data[0 : par_header_len]
     msgtype, length = struct.unpack(par_header, header)
     msgtype = msgtype & BITMASK(10)
-    
+
     if msgtype != Message_struct['RFSurveyFrequencyCapabilities']['type']:
         return (None, data)
-    
+
     body = data[par_header_len : length]
     logger.debug('%s (type=%d len=%d)' % (func(), msgtype, length))
 
