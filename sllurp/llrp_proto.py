@@ -605,16 +605,14 @@ def decode_ROAccessReport(data):
     msg['TagReportData'] = [ ]
     while True:
         ret, data = decode('TagReportData')(data)
-        #print('len(ret) = {}'.format(len(ret)))
-        #print('len(data) = {}'.format(len(data)))
         if ret:
             msg['TagReportData'].append(ret)
         else:
             break
 
-    ## Check the end of the message
-    #if len(data) > 0:
-    #    raise LLRPError('junk at end of message: ' + bin2dump(data))
+    # Check the end of the message
+    if len(data) > 0:
+        raise LLRPError('junk at end of message: ' + bin2dump(data))
 
     return msg
 
@@ -825,12 +823,12 @@ def decode_UHFBandCapabilities(data):
     logger.debug('%s (type=%d len=%d)' % (func(), msgtype, length))
 
     # Decode fields
-    i = 0
+    curMaxIndex = 0
     ret, body = decode('TransmitPowerLevelTableEntry')(body)
     while ret:
-        par['TransmitPowerLevelTableEntry' + str(i)] = ret
+        par['TransmitPowerIndex'] = max(ret['Index'], curMaxIndex)
+	curMaxIndex = par['TransmitPowerIndex']
         ret, body = decode('TransmitPowerLevelTableEntry')(body)
-        i += 1
 
     ret, body = decode('FrequencyInformation')(body)
     if ret:
@@ -845,7 +843,7 @@ Message_struct['UHFBandCapabilities'] = {
     'type': 144,
     'fields': [
         'Type',
-        'TransmitPowerLevelTableEntry',
+        'TransmitPowerIndex',
         'FrequencyInformation',
         'UHFRFModeTable',
         'RFSurveyFrequencyCapabilities'
@@ -901,12 +899,10 @@ def decode_FrequencyInformation(data):
     par['Hopping'] = flags & BIT(7) == BIT(7)
     body = body[fmt_len : ]
 
-    i = 0
     ret, body = decode('FrequencyHopTable')(body)
     while ret:
-        par['FrequencyHopTable' + str(i)] = ret
+        par['FrequencyHopTable'] = ret
         ret, body = decode('FrequencyHopTable')(body)
-        i += 1
 
     ret, body = decode('FixedFrequencyTable')(body)
     if ret:
@@ -949,8 +945,14 @@ def decode_FrequencyHopTable(data):
      par['NumHops']) = struct.unpack(fmt, body[: fmt_len])
     body = body[fmt_len : ]
     num = int(par['NumHops'])
-    for x in range(1, num + 1):
-       par['Frequency' + str(x)] = struct.unpack(id_fmt, body[: id_fmt_len])
+    minFreq = 0
+    maxFreq = 0
+    for x in range(num):
+       (freq,) = struct.unpack(id_fmt, body[: id_fmt_len])
+       par['MaxFrequency'] = max(freq, maxFreq)
+       par['MinFrequency'] = min(freq, maxFreq)
+       maxFreq = par['MaxFrequency']
+       minFreq = par['MinFrequency']
        body = body[id_fmt_len : ]
 
     return par, data[length : ]
@@ -961,7 +963,8 @@ Message_struct['FrequencyHopTable'] = {
         'Type',
         'HopTableId',
         'NumHops',
-        'Frequencies'
+        'MinFrequency',
+        'MaxFrequency'
     ],
     'decode': decode_FrequencyHopTable
 }

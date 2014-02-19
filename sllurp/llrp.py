@@ -201,10 +201,6 @@ class LLRPClient (Protocol):
                     if status == 'Success':
                         cn2t = Capability_Name2Type
                         reqd = cn2t['All']
-                        #reqd = cn2t['General Device Capabilities']
-                        #reqd = cn2t['LLRP Capabilities']
-                        #reqd = cn2t['Air Protocol LLRP Capabilities']
-                        #reqd = cn2t['Regulatory Capabilities']
                         self.sendLLRPMessage(LLRPMessage(msgdict={
                             'GET_READER_CAPABILITIES': {
                                 'Ver':  1,
@@ -231,8 +227,11 @@ class LLRPClient (Protocol):
         # so and advancing to state CONNECTED.
         elif self.state == LLRPClient.STATE_SENT_GET_CAPABILITIES:
             if msgName == 'GET_READER_CAPABILITIES_RESPONSE':
-                d = lmsg.msgdict['GET_READER_CAPABILITIES_RESPONSE']
-                logger.info('Capabilities: {}'.format(d))
+                pwr = lmsg.msgdict['GET_READER_CAPABILITIES_RESPONSE']\
+		['RegulatoryCapabilities']['UHFBandCapabilities']['TransmitPowerIndex']
+		self.tx_power = min(pwr, self.tx_power)
+		logger.info('THE TRANSMIT POWER IS {}'.format(self.tx_power))
+                logger.info('Capabilities: {}'.format(lmsg))
                 self.state = LLRPClient.STATE_CONNECTED
                 if self.start_inventory:
                     self.startInventory()
